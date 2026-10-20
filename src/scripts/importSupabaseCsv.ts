@@ -330,13 +330,30 @@ async function importFieldReports(rows: Row[], idMap: Map<string, string>) {
     const projectId = fixText(row.project_id);
     if (!id || !projectId) continue;
 
-    const project = await queryOne<{ id: string }>(
+    let project = await queryOne<{ id: string }>(
       `SELECT id FROM projects WHERE id = :id`,
       { id: projectId },
     );
     if (!project) {
-      console.warn(`  skip field report ${id}: missing project ${projectId}`);
-      continue;
+      // Some reports reference projects that were not in the projects dump.
+      // Create a minimal published stub so the report remains visible.
+      const stubTitle = fixText(row.title) ?? projectId;
+      const stubState = fixText(row.state) ?? "FCT";
+      await pool.query(
+        `INSERT INTO projects
+          (id, title, category, description, budget_ngn, budget_label, state, status,
+           featured, era, published, review_status)
+         VALUES (?, ?, 'Public Works', ?, 0, 'TBA', ?, 'In Progress', 0, 'current', 1, 'published')
+         ON DUPLICATE KEY UPDATE title = VALUES(title)`,
+        [
+          projectId,
+          stubTitle,
+          `Imported stub for field report ${id} (project missing from Supabase projects export).`,
+          stubState,
+        ],
+      );
+      console.warn(`  created stub project ${projectId} for field report ${id}`);
+      project = { id: projectId };
     }
 
     const submittedRaw = fixText(row.submitted_by);
