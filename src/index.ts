@@ -13,6 +13,7 @@ import { businessesRouter } from "./routes/businesses";
 import { chatRouter } from "./routes/chat";
 import { healthRouter } from "./routes/health";
 import { kycRouter } from "./routes/kyc";
+import { listingsRouter } from "./routes/listings";
 import { projectsRouter } from "./routes/projects";
 import { stateContentRouter } from "./routes/stateContent";
 import { tendersRouter } from "./routes/tenders";
@@ -44,6 +45,7 @@ async function main() {
   app.use("/api/auth", authRouter);
   app.use("/api/tenders", tendersRouter);
   app.use("/api/businesses", businessesRouter);
+  app.use("/api/listings", listingsRouter);
   app.use("/api/projects", projectsRouter);
   app.use("/api/state-content", stateContentRouter);
   app.use("/api/kyc", kycRouter);

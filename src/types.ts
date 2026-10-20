@@ -11,6 +11,7 @@ export type Profile = {
   account_status: AccountStatus;
   state: string | null;
   lga: string | null;
+  avatar_url: string | null;
   kyc_status: KycStatus;
   business_name: string | null;
   business_type: string | null;
@@ -36,6 +37,7 @@ export type SessionUser = {
   state: string;
   role: Role;
   verified: boolean;
+  avatarUrl?: string;
   businessType?: string;
   rcNumber?: string;
   govtState?: string;
@@ -57,6 +59,7 @@ export function profileToSessionUser(profile: Profile): SessionUser {
       role === "govt" || role === "admin"
         ? profile.account_status === "active"
         : profile.kyc_status === "verified",
+    avatarUrl: profile.avatar_url ?? undefined,
     businessType: profile.business_type ?? undefined,
     rcNumber: profile.cac_number ?? undefined,
     govtState: profile.govt_state ?? undefined,

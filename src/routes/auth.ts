@@ -1,6 +1,9 @@
+import { createHash, randomBytes } from "crypto";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { v4 as uuid } from "uuid";
 import { z } from "zod";
+import { config } from "../config";
 import { pool, queryOne } from "../db/mysql";
 import { AuthedRequest, requireAuth, signToken } from "../middleware/auth";
 import { HttpError } from "../middleware/error";
@@ -11,7 +14,12 @@ import {
   loginUser,
   registerUser,
 } from "../services/authService";
+import { sendEmail } from "../services/email";
 import { profileToSessionUser } from "../types";
+
+function hashResetToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export const authRouter = Router();
 
@@ -97,6 +105,7 @@ authRouter.patch("/me", requireAuth, async (req: AuthedRequest, res, next) => {
         officeTitle: z.string().optional(),
         businessType: z.string().optional(),
         businessName: z.string().optional(),
+        avatarUrl: z.union([z.string().url(), z.literal("")]).optional(),
       })
       .parse(req.body);
 
@@ -121,6 +130,15 @@ authRouter.patch("/me", requireAuth, async (req: AuthedRequest, res, next) => {
         req.user!.id,
       ],
     );
+
+    if (body.avatarUrl === "") {
+      await pool.query(`UPDATE profiles SET avatar_url = NULL WHERE id = ?`, [req.user!.id]);
+    } else if (body.avatarUrl) {
+      await pool.query(`UPDATE profiles SET avatar_url = ? WHERE id = ?`, [
+        body.avatarUrl.trim(),
+        req.user!.id,
+      ]);
+    }
 
     await invalidateProfileCache(req.user!.id);
     const profile = await getProfileById(req.user!.id);
@@ -155,6 +173,78 @@ authRouter.post("/change-password", requireAuth, authLimiter, async (req: Authed
 
     const hash = await bcrypt.hash(body.newPassword, 12);
     await pool.query(`UPDATE users SET password_hash = ? WHERE id = ?`, [hash, req.user!.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      next(new HttpError(400, err.errors[0]?.message ?? "Invalid payload"));
+      return;
+    }
+    next(err);
+  }
+});
+
+authRouter.post("/forgot-password", authLimiter, async (req, res, next) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const normalized = email.trim().toLowerCase();
+
+    // Always return ok to avoid email enumeration.
+    const user = await queryOne<{ id: string; email: string }>(
+      `SELECT id, email FROM users WHERE email = :email`,
+      { email: normalized },
+    );
+
+    if (user) {
+      const token = randomBytes(32).toString("hex");
+      const tokenHash = hashResetToken(token);
+      const id = uuid();
+      await pool.query(
+        `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))`,
+        [id, user.id, tokenHash],
+      );
+
+      const resetUrl = `${config.appPublicUrl}/reset-password?token=${token}`;
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your NaijaPass password",
+        text: `Reset your password (valid 1 hour):\n\n${resetUrl}\n\nIf you did not request this, ignore this email.`,
+        html: `<p>Reset your NaijaPass password (link valid for 1 hour):</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, ignore this email.</p>`,
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      next(new HttpError(400, err.errors[0]?.message ?? "Invalid payload"));
+      return;
+    }
+    next(err);
+  }
+});
+
+authRouter.post("/reset-password", authLimiter, async (req, res, next) => {
+  try {
+    const body = z
+      .object({
+        token: z.string().min(20),
+        newPassword: z.string().min(8),
+      })
+      .parse(req.body);
+
+    const tokenHash = hashResetToken(body.token);
+    const row = await queryOne<{ id: string; user_id: string }>(
+      `SELECT id, user_id FROM password_reset_tokens
+       WHERE token_hash = :hash AND used_at IS NULL AND expires_at > NOW()
+       LIMIT 1`,
+      { hash: tokenHash },
+    );
+    if (!row) throw new HttpError(400, "Reset link is invalid or expired.");
+
+    const hash = await bcrypt.hash(body.newPassword, 12);
+    await pool.query(`UPDATE users SET password_hash = ? WHERE id = ?`, [hash, row.user_id]);
+    await pool.query(`UPDATE password_reset_tokens SET used_at = NOW() WHERE id = ?`, [row.id]);
+
     res.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

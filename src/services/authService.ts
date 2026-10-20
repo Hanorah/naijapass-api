@@ -7,7 +7,7 @@ import type { Profile, Role } from "../types";
 import { profileToSessionUser } from "../types";
 
 const PROFILE_SQL = `
-  SELECT id, email, full_name, phone, role, account_status, state, lga, kyc_status,
+  SELECT id, email, full_name, phone, role, account_status, state, lga, avatar_url, kyc_status,
          business_name, business_type, cac_number, govt_state, department, office_title
   FROM profiles
 `;

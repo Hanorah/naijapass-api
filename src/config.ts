@@ -37,12 +37,27 @@ export const config = {
   jwtSecret: jwtSecret(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
   googleAiKey: process.env.GOOGLE_AI_API_KEY?.trim() || "",
+  resendApiKey: process.env.RESEND_API_KEY?.trim() || "",
+  resendFrom:
+    process.env.RESEND_FROM_EMAIL?.trim() || "NaijaPass <onboarding@resend.dev>",
+  kycApiKey: process.env.KYC_API_KEY?.trim() || "",
+  kycProviderUrl: process.env.KYC_PROVIDER_URL?.trim() || "",
   /** Public base used in upload URLs (e.g. http://localhost:4000) */
   apiPublicUrl: (process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}`).replace(
     /\/$/,
     "",
   ),
+  /** Frontend origin for password-reset links */
+  appPublicUrl: (
+    process.env.APP_PUBLIC_URL ??
+    (process.env.CORS_ORIGINS ?? "http://localhost:3000").split(",")[0] ??
+    "http://localhost:3000"
+  )
+    .trim()
+    .replace(/\/$/, ""),
   /** Fixed seed admin password — do not rotate in this project */
   adminSeedPassword: "AdminPass123!",
+  /** Seeded state-government demo password */
+  govtSeedPassword: "GovtPass123!",
   trustProxy: process.env.TRUST_PROXY === "1",
 };

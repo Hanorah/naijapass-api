@@ -265,6 +265,18 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   CONSTRAINT fk_audit_actor FOREIGN KEY (actor_id) REFERENCES profiles (id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id CHAR(36) PRIMARY KEY,
+  user_id CHAR(36) NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_reset_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  INDEX idx_reset_user (user_id),
+  INDEX idx_reset_expires (expires_at)
+) ENGINE=InnoDB;
+
 -- Files stored in MySQL (not on disk)
 CREATE TABLE IF NOT EXISTS file_uploads (
   id CHAR(36) PRIMARY KEY,

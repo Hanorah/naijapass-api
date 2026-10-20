@@ -5,6 +5,7 @@ import { cacheDel, cacheGet, cacheSet } from "../db/redis";
 import { pool, query, queryOne } from "../db/mysql";
 import { AuthedRequest, requireAuth, requireRoles } from "../middleware/auth";
 import { HttpError } from "../middleware/error";
+import { sendEmail } from "../services/email";
 
 export const tendersRouter = Router();
 
@@ -289,8 +290,15 @@ tendersRouter.post(
     try {
       const body = bidSchema.parse(req.body);
       const tenderId = req.params.id;
-      const tender = await queryOne<{ id: string; status: string }>(
-        `SELECT id, status FROM tenders WHERE id = :id`,
+      const tender = await queryOne<{
+        id: string;
+        status: string;
+        title: string;
+        reference: string | null;
+        contact_email: string | null;
+        submitted_by: string | null;
+      }>(
+        `SELECT id, status, title, reference, contact_email, submitted_by FROM tenders WHERE id = :id`,
         { id: tenderId },
       );
       if (!tender) throw new HttpError(404, "Tender not found");
@@ -324,6 +332,35 @@ tendersRouter.post(
           body.notes ?? null,
         ],
       );
+
+      const notifyTo =
+        tender.contact_email ||
+        (
+          await queryOne<{ email: string | null }>(
+            `SELECT email FROM profiles WHERE id = :id`,
+            { id: tender.submitted_by },
+          )
+        )?.email;
+
+      if (notifyTo) {
+        const amount =
+          body.proposed_amount != null
+            ? `${body.currency ?? "NGN"} ${body.proposed_amount.toLocaleString("en-NG")}`
+            : "not specified";
+        void sendEmail({
+          to: notifyTo,
+          subject: `New bid on ${tender.reference ?? tender.title}`,
+          text: `${body.business_name} submitted a bid on "${tender.title}".\nAmount: ${amount}\nContact: ${body.contact_email}`,
+          html: `<p><strong>${body.business_name}</strong> submitted a bid on <em>${tender.title}</em>.</p><p>Amount: ${amount}<br/>Contact: ${body.contact_email}</p>`,
+        });
+      }
+
+      void sendEmail({
+        to: body.contact_email,
+        subject: `Bid received — ${tender.reference ?? tender.title}`,
+        text: `Your bid for "${tender.title}" was received. We will notify you when the procuring entity reviews it.`,
+        html: `<p>Your bid for <strong>${tender.title}</strong> was received.</p><p>We will notify you when the procuring entity reviews it.</p>`,
+      });
 
       const bid = await queryOne(`SELECT * FROM tender_bids WHERE id = :id`, { id });
       res.status(201).json({ bid });

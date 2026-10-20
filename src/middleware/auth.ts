@@ -37,7 +37,7 @@ export async function requireAuth(req: AuthedRequest, _res: Response, next: Next
     }
 
     const profile = await queryOne<Profile>(
-      `SELECT id, email, full_name, phone, role, account_status, state, lga, kyc_status,
+      `SELECT id, email, full_name, phone, role, account_status, state, lga, avatar_url, kyc_status,
               business_name, business_type, cac_number, govt_state, department, office_title
        FROM profiles WHERE id = :id`,
       { id: payload.sub },
