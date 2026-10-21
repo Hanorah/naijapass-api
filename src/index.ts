@@ -41,6 +41,22 @@ async function main() {
   app.use(express.json({ limit: "2mb" }));
   app.use(morgan(config.isProd ? "combined" : "dev"));
 
+  app.get("/", (_req, res) => {
+    res.json({
+      service: "naijapass-api",
+      ok: true,
+      health: "/health",
+      docs: {
+        auth: "/api/auth",
+        projects: "/api/projects",
+        tenders: "/api/tenders",
+        businesses: "/api/businesses",
+        listings: "/api/listings",
+        stateContent: "/api/state-content",
+      },
+    });
+  });
+
   app.use("/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/tenders", tendersRouter);
