@@ -10,14 +10,10 @@ Uploads are stored **in MySQL** (`file_uploads` table), not on disk.
 2. **WSL** → Redis already running (`redis-cli ping` → `PONG`)  
 3. `cp .env.example .env`  
 4. `npm install && npm run db:migrate && npm run db:seed && npm run dev`
-5. (Optional) Re-import former Supabase dumps:
 
-```bash
-npm run db:import-supabase
-```
-
-CSVs are in `data/supabase-export/` (`profiles`, `projects`, `tenders`, `state_content`, `field_reports`).  
-Override path with `CSV_DIR=...`.
+`db:seed` upserts admin/govt demos **and** imports CSVs from `data/supabase-export/`  
+(profiles, projects, tenders, state_content, field_reports).  
+Re-run import alone with `npm run db:import-supabase` (or `CSV_DIR=...`).
 
 - API: http://localhost:4000  
 - Health: http://localhost:4000/health  

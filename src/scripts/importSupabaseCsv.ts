@@ -522,10 +522,29 @@ async function importTenders(rows: Row[], idMap: Map<string, string>) {
   return upserted;
 }
 
-async function main() {
+export async function runSupabaseImport(options?: { closePool?: boolean }) {
+  const closePool = options?.closePool !== false;
   const dir =
     process.env.CSV_DIR?.trim() ||
     path.resolve(process.cwd(), "data", "supabase-export");
+
+  if (!fs.existsSync(dir)) {
+    console.warn(`⚠ CSV folder missing — skipped Supabase import: ${dir}`);
+    return;
+  }
+
+  const required = [
+    "profiles_rows.csv",
+    "projects_rows.csv",
+    "field_reports_rows.csv",
+    "state_content_rows.csv",
+    "tenders_rows.csv",
+  ];
+  const missing = required.filter((name) => !fs.existsSync(path.join(dir, name)));
+  if (missing.length) {
+    console.warn(`⚠ Missing CSV files — skipped Supabase import: ${missing.join(", ")}`);
+    return;
+  }
 
   console.log(`Importing Supabase CSVs from ${dir}`);
 
@@ -561,10 +580,16 @@ async function main() {
   console.log(`  *@govt.naijapass.ng → ${config.govtSeedPassword}`);
   console.log("  other imported accounts → NaijaPass123!");
 
-  await pool.end();
+  if (closePool) await pool.end();
 }
 
-main().catch((err) => {
-  console.error("Import failed:", err);
-  process.exit(1);
-});
+const isDirectRun =
+  typeof process.argv[1] === "string" &&
+  process.argv[1].replace(/\\/g, "/").includes("importSupabaseCsv");
+
+if (isDirectRun) {
+  runSupabaseImport({ closePool: true }).catch((err) => {
+    console.error("Import failed:", err);
+    process.exit(1);
+  });
+}

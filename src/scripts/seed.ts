@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { config } from "../config";
 import { pool, queryOne } from "../db/mysql";
+import { runSupabaseImport } from "./importSupabaseCsv";
 
 type SeedAccount = {
   email: string;
@@ -151,6 +152,10 @@ async function seed() {
   });
 
   await ensureSampleTender(adminId);
+
+  console.log("\n— Importing Supabase CSV dump —");
+  await runSupabaseImport({ closePool: false });
+
   await pool.end();
 }
 
