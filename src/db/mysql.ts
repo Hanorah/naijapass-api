@@ -7,10 +7,12 @@ export const pool = mysql.createPool({
   user: config.mysql.user,
   password: config.mysql.password,
   database: config.mysql.database,
+  ssl: config.mysql.ssl,
   waitForConnections: true,
   connectionLimit: 10,
   namedPlaceholders: true,
   dateStrings: true,
+  connectTimeout: 20000,
 });
 
 // mysql2 named placeholders accept plain objects; keep this loose for route handlers.

@@ -33,13 +33,24 @@ export const config = {
     process.env.CORS_ALLOW_VERCEL === "1" ||
     process.env.CORS_ALLOW_VERCEL === "true" ||
     (process.env.CORS_ORIGINS ?? "").toLowerCase().includes(".vercel.app"),
-  mysql: {
-    host: process.env.MYSQL_HOST ?? "127.0.0.1",
-    port: Number(process.env.MYSQL_PORT ?? 3306),
-    user: process.env.MYSQL_USER ?? "root",
-    password: process.env.MYSQL_PASSWORD ?? "",
-    database: process.env.MYSQL_DATABASE ?? "naijapass",
-  },
+  mysql: (() => {
+    const host = (process.env.MYSQL_HOST ?? "127.0.0.1").trim();
+    const isLocal = host === "127.0.0.1" || host === "localhost";
+    const sslEnv = (process.env.MYSQL_SSL ?? "").toLowerCase();
+    const useSsl =
+      sslEnv === "1" ||
+      sslEnv === "true" ||
+      (!isLocal && sslEnv !== "0" && sslEnv !== "false");
+    return {
+      host,
+      port: Number(process.env.MYSQL_PORT ?? 3306),
+      user: process.env.MYSQL_USER ?? "root",
+      password: process.env.MYSQL_PASSWORD ?? "",
+      database: process.env.MYSQL_DATABASE ?? "naijapass",
+      /** Railway / most hosted MySQL need TLS from Render */
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+    };
+  })(),
   /** WSL Ubuntu Redis on this machine — cache only, not a remote deploy target */
   redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
   jwtSecret: jwtSecret(),
