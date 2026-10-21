@@ -33,7 +33,26 @@ async function main() {
   );
   app.use(
     cors({
-      origin: config.corsOrigins,
+      origin(origin, callback) {
+        // Non-browser clients (curl, server-to-server) send no Origin.
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        if (config.corsOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+        // Vercel preview URLs change per deploy — allow when enabled.
+        if (
+          config.corsAllowVercel &&
+          /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)
+        ) {
+          callback(null, true);
+          return;
+        }
+        callback(null, false);
+      },
       credentials: true,
     }),
   );

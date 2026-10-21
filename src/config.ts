@@ -25,6 +25,14 @@ export const config = {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
+  /**
+   * When true (default if any CORS_ORIGINS host is *.vercel.app, or CORS_ALLOW_VERCEL=1),
+   * allow https://*.vercel.app preview URLs (they change every deploy).
+   */
+  corsAllowVercel:
+    process.env.CORS_ALLOW_VERCEL === "1" ||
+    process.env.CORS_ALLOW_VERCEL === "true" ||
+    (process.env.CORS_ORIGINS ?? "").toLowerCase().includes(".vercel.app"),
   mysql: {
     host: process.env.MYSQL_HOST ?? "127.0.0.1",
     port: Number(process.env.MYSQL_PORT ?? 3306),
