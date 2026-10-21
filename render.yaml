@@ -1,0 +1,16 @@
+# Optional Blueprint — or set the same values in the Render dashboard.
+services:
+  - type: web
+    name: naijapass-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: NODE_VERSION
+        value: "20"
